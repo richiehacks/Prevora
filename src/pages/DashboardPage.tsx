@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Bell, Settings, User, MapPin, TrendingUp, AlertTriangle, Calendar, Filter, Bot, Activity, Zap, Shield, Clock, ChevronRight, Eye, Download, BarChart3, Plus, RefreshCw, Sparkles, CheckCircle, Mail } from 'lucide-react';
+import { Search, Bell, Settings, User, MapPin, TrendingUp, AlertTriangle, Calendar, Filter, Bot, Activity, Zap, Shield, Clock, ChevronRight, Eye, Download, BarChart3, Plus, RefreshCw, Sparkles, CheckCircle, Mail, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import MapComponent from '../components/MapComponent';
 import EventCard from '../components/EventCard';
 import AIChat from '../components/AIChat';
+import NotificationCenter from '../components/NotificationCenter';
+import AdvancedAnalytics from '../components/AdvancedAnalytics';
+import RealTimeMonitor from '../components/RealTimeMonitor';
 import { getSignals, getCurrentUser, getUserProfile, getEvents, checkEmailVerification, resendEmailVerification } from '../lib/supabase';
 import { generateHealthReport } from '../lib/openai';
 
@@ -12,6 +15,8 @@ const DashboardPage = () => {
   const [timeFilter, setTimeFilter] = useState('24h');
   const [searchTerm, setSearchTerm] = useState('');
   const [showAIChat, setShowAIChat] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [activeTab, setActiveTab] = useState('overview');
   const [signals, setSignals] = useState([]);
   const [events, setEvents] = useState([]);
   const [filteredSignals, setFilteredSignals] = useState([]);
@@ -22,6 +27,13 @@ const DashboardPage = () => {
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [emailVerified, setEmailVerified] = useState(true);
   const [showEmailVerification, setShowEmailVerification] = useState(false);
+
+  const tabs = [
+    { id: 'overview', name: 'Overview', icon: BarChart3 },
+    { id: 'analytics', name: 'Analytics', icon: TrendingUp },
+    { id: 'monitor', name: 'Live Monitor', icon: Activity },
+    { id: 'map', name: 'Map View', icon: MapPin }
+  ];
 
   const metricCards = [
     {
@@ -228,6 +240,211 @@ const DashboardPage = () => {
 
   const activeEvents = events.filter(e => e.status === 'active').slice(0, 6);
 
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'analytics':
+        return <AdvancedAnalytics />;
+      case 'monitor':
+        return <RealTimeMonitor />;
+      case 'map':
+        return (
+          <div className="bg-white rounded-xl p-6 shadow-lg">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">Interactive Signal Map</h3>
+            <MapComponent 
+              signals={mapSignals}
+              height="600px"
+              center={[20.5937, 78.9629]}
+              zoom={5}
+            />
+          </div>
+        );
+      default:
+        return renderOverview();
+    }
+  };
+
+  const renderOverview = () => (
+    <div className="space-y-8">
+      {/* AI Health Report */}
+      {aiReport && (
+        <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6 shadow-lg border border-purple-200">
+          <div className="flex items-center space-x-3 mb-4">
+            <Bot className="h-6 w-6 text-purple-600" />
+            <h3 className="text-lg font-bold text-gray-900">AI Health Intelligence Report</h3>
+            <Sparkles className="h-5 w-5 text-purple-600" />
+          </div>
+          <div className="prose prose-sm max-w-none text-gray-700">
+            <div className="whitespace-pre-wrap">{aiReport}</div>
+          </div>
+        </div>
+      )}
+
+      {/* Main Dashboard Grid */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        {/* Left Column - Map */}
+        <div className="xl:col-span-2">
+          <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-lg">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900">Live Signal Map</h2>
+              <div className="flex items-center space-x-2">
+                <button className="px-3 py-1 bg-blue-100 text-blue-600 rounded-lg text-sm font-medium">
+                  Signals
+                </button>
+                <button className="px-3 py-1 text-gray-600 hover:bg-gray-100 rounded-lg text-sm font-medium">
+                  Events
+                </button>
+                <button className="px-3 py-1 text-gray-600 hover:bg-gray-100 rounded-lg text-sm font-medium">
+                  Clusters
+                </button>
+              </div>
+            </div>
+            
+            {/* Map */}
+            <div className="relative" style={{ zIndex: 1 }}>
+              <MapComponent 
+                signals={mapSignals}
+                height="400px"
+                center={[20.5937, 78.9629]}
+                zoom={5}
+                className="z-0"
+              />
+            </div>
+
+            <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex items-center space-x-4 text-sm">
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                  <span className="text-gray-600">High Severity</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                  <span className="text-gray-600">Medium</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                  <span className="text-gray-600">Low</span>
+                </div>
+              </div>
+              <button className="text-blue-600 font-medium hover:text-blue-700 text-sm">
+                View Full Map →
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column - Metrics and Activity */}
+        <div className="space-y-6">
+          {/* Metrics Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-4">
+            {metricCards.map((metric, index) => (
+              <div key={index} className="bg-white rounded-xl p-4 sm:p-6 shadow-lg hover:shadow-xl transition-shadow">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-semibold text-gray-900 text-sm">{metric.title}</h3>
+                  <metric.icon className={`h-4 w-4 ${getTrendColor(metric.trend)}`} />
+                </div>
+                <div className="flex items-end space-x-2 mb-1">
+                  <span className="text-xl sm:text-2xl font-bold text-gray-900">{metric.value}</span>
+                  <span className={`text-sm font-medium ${getTrendColor(metric.trend)}`}>
+                    {metric.change}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500">{metric.description}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Recent Activity */}
+          <div className="bg-white rounded-xl p-4 sm:p-6 shadow-lg">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-gray-900">Recent Activity</h3>
+              <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+                View All
+              </button>
+            </div>
+            <div className="space-y-3">
+              {recentActivity.map((activity) => (
+                <div key={activity.id} className="flex items-center space-x-3 p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                    <activity.icon className="h-4 w-4 text-blue-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">{activity.action}</p>
+                    <div className="flex items-center space-x-2 text-xs text-gray-500">
+                      <Clock className="h-3 w-3" />
+                      <span>{activity.time}</span>
+                      <span>•</span>
+                      <span>{activity.user}</span>
+                    </div>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Events Section */}
+      <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-lg">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <h2 className="text-lg sm:text-xl font-bold text-gray-900">Active Events & Clusters</h2>
+          <div className="flex items-center space-x-2">
+            <Filter className="h-5 w-5 text-gray-600" />
+            <select className="px-3 py-2 border border-gray-300 rounded-lg text-sm">
+              <option>All Severities</option>
+              <option>High</option>
+              <option>Medium</option>
+              <option>Low</option>
+            </select>
+            <Link
+              to="/admin"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors flex items-center space-x-2"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Add Signal</span>
+            </Link>
+          </div>
+        </div>
+
+        {activeEvents.length > 0 ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+            {activeEvents.map((event) => (
+              <EventCard key={event.id} event={event} />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-16">
+            <AlertTriangle className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">No active events</h3>
+            <p className="text-gray-600">The system is monitoring for health signals. Events will appear here when clusters are detected.</p>
+          </div>
+        )}
+      </div>
+
+      {/* Alert Panel */}
+      {events.filter(e => e.status === 'active' && e.severity === 'high').length > 0 && (
+        <div className="bg-gradient-to-r from-red-50 to-orange-50 border-l-4 border-red-500 rounded-xl p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+            <AlertTriangle className="h-6 w-6 text-red-600 flex-shrink-0 mt-1" />
+            <div className="flex-1 min-w-0">
+              <h3 className="font-bold text-red-900 mb-2">High Severity Alert</h3>
+              <p className="text-red-800 mb-4">
+                {events.filter(e => e.status === 'active' && e.severity === 'high').length} high severity event(s) detected. 
+                Monitor closely and follow recommended precautionary measures.
+              </p>
+              <Link
+                to="/alerts"
+                className="inline-block px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors"
+              >
+                View All Alerts
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-gray-50 pt-20">
       {/* Email Verification Banner */}
@@ -292,15 +509,15 @@ const DashboardPage = () => {
               </div>
               
               <div className="flex items-center space-x-2">
-                <Link 
-                  to="/alerts"
+                <button 
+                  onClick={() => setShowNotifications(true)}
                   className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors relative"
                 >
                   <Bell className="h-6 w-6" />
                   <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
                     {events.filter(e => e.status === 'active' && e.severity === 'high').length}
                   </span>
-                </Link>
+                </button>
                 
                 <button className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
                   <Settings className="h-6 w-6" />
@@ -346,35 +563,24 @@ const DashboardPage = () => {
         </div>
       )}
 
-      {/* Filters */}
+      {/* Navigation Tabs */}
       <div className="container mx-auto px-4 sm:px-6 py-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
-            <div className="flex items-center space-x-2">
-              <Calendar className="h-5 w-5 text-gray-600" />
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-            
-            <div className="flex items-center bg-white rounded-lg border border-gray-300 p-1">
-              {['24H', 'Weekly', 'Monthly'].map((period) => (
-                <button
-                  key={period}
-                  onClick={() => setTimeFilter(period.toLowerCase())}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                    timeFilter === period.toLowerCase()
-                      ? 'bg-blue-600 text-white'
-                      : 'text-gray-600 hover:text-blue-600'
-                  }`}
-                >
-                  {period}
-                </button>
-              ))}
-            </div>
+          <div className="flex items-center bg-white rounded-lg border border-gray-300 p-1">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  activeTab === tab.id
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-600 hover:text-blue-600'
+                }`}
+              >
+                <tab.icon className="h-4 w-4" />
+                <span className="hidden sm:inline">{tab.name}</span>
+              </button>
+            ))}
           </div>
 
           <div className="flex items-center space-x-3">
@@ -405,187 +611,8 @@ const DashboardPage = () => {
           </div>
         </div>
 
-        {/* AI Health Report */}
-        {aiReport && (
-          <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6 shadow-lg mb-8 border border-purple-200">
-            <div className="flex items-center space-x-3 mb-4">
-              <Bot className="h-6 w-6 text-purple-600" />
-              <h3 className="text-lg font-bold text-gray-900">AI Health Intelligence Report</h3>
-              <Sparkles className="h-5 w-5 text-purple-600" />
-            </div>
-            <div className="prose prose-sm max-w-none text-gray-700">
-              <div className="whitespace-pre-wrap">{aiReport}</div>
-            </div>
-          </div>
-        )}
-
-        {/* Main Dashboard Grid */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-          {/* Left Column - Map */}
-          <div className="xl:col-span-2">
-            <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-lg">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-                <h2 className="text-lg sm:text-xl font-bold text-gray-900">Live Signal Map</h2>
-                <div className="flex items-center space-x-2">
-                  <button className="px-3 py-1 bg-blue-100 text-blue-600 rounded-lg text-sm font-medium">
-                    Signals
-                  </button>
-                  <button className="px-3 py-1 text-gray-600 hover:bg-gray-100 rounded-lg text-sm font-medium">
-                    Events
-                  </button>
-                  <button className="px-3 py-1 text-gray-600 hover:bg-gray-100 rounded-lg text-sm font-medium">
-                    Clusters
-                  </button>
-                </div>
-              </div>
-              
-              {/* Map */}
-              <div className="relative" style={{ zIndex: 1 }}>
-                <MapComponent 
-                  signals={mapSignals}
-                  height="400px"
-                  center={[20.5937, 78.9629]}
-                  zoom={5}
-                  className="z-0"
-                />
-              </div>
-
-              <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div className="flex items-center space-x-4 text-sm">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                    <span className="text-gray-600">High Severity</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                    <span className="text-gray-600">Medium</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                    <span className="text-gray-600">Low</span>
-                  </div>
-                </div>
-                <button className="text-blue-600 font-medium hover:text-blue-700 text-sm">
-                  View Full Map →
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Column - Metrics and Activity */}
-          <div className="space-y-6">
-            {/* Metrics Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-4">
-              {metricCards.map((metric, index) => (
-                <div key={index} className="bg-white rounded-xl p-4 sm:p-6 shadow-lg hover:shadow-xl transition-shadow">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-semibold text-gray-900 text-sm">{metric.title}</h3>
-                    <metric.icon className={`h-4 w-4 ${getTrendColor(metric.trend)}`} />
-                  </div>
-                  <div className="flex items-end space-x-2 mb-1">
-                    <span className="text-xl sm:text-2xl font-bold text-gray-900">{metric.value}</span>
-                    <span className={`text-sm font-medium ${getTrendColor(metric.trend)}`}>
-                      {metric.change}
-                    </span>
-                  </div>
-                  <p className="text-xs text-gray-500">{metric.description}</p>
-                </div>
-              ))}
-            </div>
-
-            {/* Recent Activity */}
-            <div className="bg-white rounded-xl p-4 sm:p-6 shadow-lg">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-gray-900">Recent Activity</h3>
-                <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
-                  View All
-                </button>
-              </div>
-              <div className="space-y-3">
-                {recentActivity.map((activity) => (
-                  <div key={activity.id} className="flex items-center space-x-3 p-3 hover:bg-gray-50 rounded-lg transition-colors">
-                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                      <activity.icon className="h-4 w-4 text-blue-600" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">{activity.action}</p>
-                      <div className="flex items-center space-x-2 text-xs text-gray-500">
-                        <Clock className="h-3 w-3" />
-                        <span>{activity.time}</span>
-                        <span>•</span>
-                        <span>{activity.user}</span>
-                      </div>
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Events Section */}
-        <div className="mt-8">
-          <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-lg">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-              <h2 className="text-lg sm:text-xl font-bold text-gray-900">Active Events & Clusters</h2>
-              <div className="flex items-center space-x-2">
-                <Filter className="h-5 w-5 text-gray-600" />
-                <select className="px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                  <option>All Severities</option>
-                  <option>High</option>
-                  <option>Medium</option>
-                  <option>Low</option>
-                </select>
-                <Link
-                  to="/admin"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors flex items-center space-x-2"
-                >
-                  <Plus className="h-4 w-4" />
-                  <span className="hidden sm:inline">Add Signal</span>
-                </Link>
-              </div>
-            </div>
-
-            {activeEvents.length > 0 ? (
-              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                {activeEvents.map((event) => (
-                  <EventCard key={event.id} event={event} />
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-16">
-                <AlertTriangle className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">No active events</h3>
-                <p className="text-gray-600">The system is monitoring for health signals. Events will appear here when clusters are detected.</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Alert Panel */}
-        {events.filter(e => e.status === 'active' && e.severity === 'high').length > 0 && (
-          <div className="mt-8">
-            <div className="bg-gradient-to-r from-red-50 to-orange-50 border-l-4 border-red-500 rounded-xl p-4 sm:p-6">
-              <div className="flex flex-col sm:flex-row sm:items-start gap-4">
-                <AlertTriangle className="h-6 w-6 text-red-600 flex-shrink-0 mt-1" />
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-bold text-red-900 mb-2">High Severity Alert</h3>
-                  <p className="text-red-800 mb-4">
-                    {events.filter(e => e.status === 'active' && e.severity === 'high').length} high severity event(s) detected. 
-                    Monitor closely and follow recommended precautionary measures.
-                  </p>
-                  <Link
-                    to="/alerts"
-                    className="inline-block px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors"
-                  >
-                    View All Alerts
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Tab Content */}
+        {renderTabContent()}
       </div>
 
       {/* Panpath AI Assistant */}
@@ -607,6 +634,11 @@ const DashboardPage = () => {
           eventCount: events.filter(e => e.status === 'active').length,
           recentActivity: signals.length > 0 ? 'Active monitoring' : 'Normal monitoring'
         }}
+      />
+
+      <NotificationCenter 
+        isOpen={showNotifications} 
+        onClose={() => setShowNotifications(false)} 
       />
     </div>
   );
